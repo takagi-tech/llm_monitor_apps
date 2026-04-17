@@ -1,0 +1,33 @@
+{
+    "env": {
+        "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    },
+    "permissions": {
+        "allow": [
+            "Bash(make:*)",
+            "Bash(uv run ruff check:*)"
+        ],
+        "deny": [
+            "Bash(rm -rf:*)",
+            "Bash(pip install:*)"
+        ]
+    },
+    "enableAllProjectMcpServers": true,
+    "enabledMcpjsonServers": [
+        "context7"
+    ],
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "jq -r 'if .tool_input.command | test(\"rm -rf|dd if=|:(){ :|:& };:\") then {\"decision\": \"block\", \"reason\": \"危険なコマンドは実行できません。別の方法を検討してください。\"} else empty end'"
+                    }
+                ]
+            }
+        ]
+    },
+    "plansDirectory": "./.claude/plans/"
+}
