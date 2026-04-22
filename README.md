@@ -49,21 +49,22 @@ FastAPI と HTMX で作られた、ローカル LLM サーバーの簡易監視 
 │   │   └── llm_detector.py
 │   └── templates
 │       └── index.html
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
 ├── endpoints.json
 ├── pyproject.toml
 └── uv.lock
 ```
 
-## 前提条件
+## ローカル起動
+
+### 前提条件
 
 - `uv` がインストールされていること
 - Python 3.10 以上が使えること
 
-`uv` 未導入なら、公式手順でインストールしてください。
-
-## セットアップ
-
-依存関係を同期します。
+### セットアップ
 
 ```bash
 uv sync
@@ -76,9 +77,7 @@ uv sync
 UV_CACHE_DIR=/tmp/uv-cache uv sync
 ```
 
-## 起動方法
-
-開発サーバーを起動します。
+### 起動
 
 ```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -95,6 +94,41 @@ UV_CACHE_DIR=/tmp/uv-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 800
 - `http://127.0.0.1:8000/`
 - `http://localhost:8000/`
 
+## Docker で起動する
+
+### 前提条件
+
+- Docker がインストールされていること
+- Docker Compose が使えること
+
+### 起動
+
+```bash
+docker compose up --build
+```
+
+バックグラウンドで起動する場合はこちらです。
+
+```bash
+docker compose up --build -d
+```
+
+ブラウザで以下を開きます。
+
+- `http://127.0.0.1:8000/`
+- `http://localhost:8000/`
+
+### 停止
+
+```bash
+docker compose down
+```
+
+### データ永続化
+
+`docker-compose.yml` では、ホスト側の `endpoints.json` をコンテナ内の `/app/endpoints.json` にバインドマウントしています。
+そのため、コンテナを作り直しても登録済みエンドポイントは保持されます。
+
 ## 使い方
 
 1. トップページを開く
@@ -109,7 +143,7 @@ UV_CACHE_DIR=/tmp/uv-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 800
 
 ## データ保存
 
-登録したエンドポイントは、リポジトリ直下の [endpoints.json](/mnt/c/Users/takagi/Documents/mac用ディレクトリ/study/llm_monitor_apps/endpoints.json) に保存されます。
+登録したエンドポイントは、リポジトリ直下の [endpoints.json](/mnt/c/users/takagi/documents/mac用ディレクトリ/study/llm_monitor_apps/endpoints.json) に保存されます。
 
 - データベースは使っていません
 - 永続化は JSON ファイルベースです
@@ -152,10 +186,18 @@ UV_CACHE_DIR=/tmp/uv-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 800
 UV_CACHE_DIR=/tmp/uv-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+### Docker ビルドが失敗する
+
+次を確認してください。
+
+- Docker デーモンが起動しているか
+- `docker compose` が使えるか
+- 社内ネットワークやプロキシの制限で Python パッケージ取得に失敗していないか
+
 ## 今後の改善候補
 
 - Tailwind の導入
 - API キー付きエンドポイントへの対応
 - 定期ポーリングによる自動監視
 - テスト追加
-- Docker 対応
+- Docker イメージの軽量化

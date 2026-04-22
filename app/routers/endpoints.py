@@ -26,12 +26,6 @@ def render_endpoints_html(endpoints: List[LLMEndpoint]) -> str:
                     hx-swap="innerHTML">
                 Ping
             </button>
-            <button class="btn btn-model"
-                    hx-get="/api/endpoints/{ep.id}/model"
-                    hx-target="#endpoint-list"
-                    hx-swap="innerHTML">
-                モデル取得
-            </button>
             <button class="btn btn-delete"
                     hx-delete="/api/endpoints/{ep.id}"
                     hx-target="#endpoint-list"

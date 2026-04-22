@@ -1,0 +1,9 @@
+services:
+  web:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./endpoints.json:/app/endpoints.json
+    restart: unless-stopped
