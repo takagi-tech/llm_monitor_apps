@@ -1,46 +1,26 @@
 [
   {
-    "id": 4,
+    "id": 9,
     "name": "minimax",
-    "ip": "192.168.86.13",
+    "network": "AI2",
+    "ip": "192.168.86.18",
     "port": 8000,
     "api_key": null,
     "model_name": "\u73fe\u5728\u3001\u30e2\u30c7\u30eb\u306f\u7acb\u3063\u3066\u3044\u307e\u305b\u3093",
     "status": "offline",
-    "created_at": "2026-04-18 03:39:00",
-    "updated_at": "2026-04-22 22:09:28"
+    "created_at": "2026-04-22 22:28:58",
+    "updated_at": "2026-04-22 22:53:22"
   },
   {
-    "id": 5,
+    "id": 12,
     "name": "google/medgemma-27b-text-it",
-    "ip": "192.168.86.13",
+    "network": "AI3",
+    "ip": "10.0.1.100",
     "port": 8000,
-    "api_key": null,
+    "api_key": "Empty",
     "model_name": "\u73fe\u5728\u3001\u30e2\u30c7\u30eb\u306f\u7acb\u3063\u3066\u3044\u307e\u305b\u3093",
     "status": "offline",
-    "created_at": "2026-04-18 03:40:04",
-    "updated_at": "2026-04-22 22:09:30"
-  },
-  {
-    "id": 6,
-    "name": "minimax",
-    "ip": "192.168.86.18",
-    "port": 7801,
-    "api_key": null,
-    "model_name": "\u73fe\u5728\u3001\u30e2\u30c7\u30eb\u306f\u7acb\u3063\u3066\u3044\u307e\u305b\u3093",
-    "status": "offline",
-    "created_at": "2026-04-20 18:07:47",
-    "updated_at": "2026-04-22 22:09:31"
-  },
-  {
-    "id": 7,
-    "name": "minimax",
-    "ip": "192.168.86.18",
-    "port": 8000,
-    "api_key": null,
-    "model_name": "\u73fe\u5728\u3001\u30e2\u30c7\u30eb\u306f\u7acb\u3063\u3066\u3044\u307e\u305b\u3093",
-    "status": "unknown",
-    "created_at": "2026-04-22 22:14:02",
-    "updated_at": "2026-04-22 22:14:11"
+    "created_at": "2026-04-22 22:36:03",
+    "updated_at": "2026-04-22 22:53:27"
   }
 ]

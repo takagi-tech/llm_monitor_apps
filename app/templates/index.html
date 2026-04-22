@@ -133,7 +133,20 @@
             min-width: 150px;
         }
 
-        .form-row input:focus {
+        .form-row select {
+            background: var(--bg-paper);
+            border: 1px solid var(--ink-light);
+            border-radius: 2px;
+            padding: 0.75rem 1rem;
+            color: var(--ink);
+            font-family: inherit;
+            font-size: 0.9rem;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .form-row input:focus,
+        .form-row select:focus {
             outline: none;
             border-color: var(--vermillion);
             box-shadow: 0 0 0 2px rgba(197, 61, 67, 0.2);
@@ -168,8 +181,56 @@
             background: var(--cream);
             border: 2px solid var(--ink);
             border-radius: 4px;
-            overflow: hidden;
             box-shadow: 6px 6px 0 var(--shadow);
+            padding: 1rem;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+        }
+
+        .network-group + .network-group {
+            margin-top: 1rem;
+        }
+
+        .network-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, rgba(61, 90, 128, 0.12) 0%, rgba(212, 168, 83, 0.08) 100%);
+            border: 2px solid var(--ink);
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            padding: 0.9rem 1.2rem;
+        }
+
+        .network-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: var(--indigo);
+        }
+
+        .network-count {
+            font-size: 0.78rem;
+            color: var(--ink-light);
+            letter-spacing: 0.08em;
+        }
+
+        .network-body {
+            background: var(--cream);
+            border: 2px solid var(--ink);
+            border-top: 1px solid var(--ink-light);
+            border-radius: 0 0 4px 4px;
+            overflow: hidden;
+        }
+
+        .network-empty {
+            padding: 1.25rem 1.5rem;
+            color: var(--ink-light);
+            font-size: 0.9rem;
         }
 
         .endpoint-item {
@@ -325,6 +386,19 @@
             box-shadow: 0 4px 12px rgba(125, 206, 140, 0.3);
         }
 
+        .btn-ping-all {
+            background: linear-gradient(135deg, #3d5a80 0%, #24384f 100%);
+            color: #d8e8fb;
+            border-color: #6f8eb4;
+            padding: 0.7rem 1.2rem;
+            font-size: 0.78rem;
+        }
+
+        .btn-ping-all:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(111, 142, 180, 0.35);
+        }
+
         .btn-delete {
             background: linear-gradient(135deg, #5a2d2d 0%, #3d1a1a 100%);
             color: #ce7d7d;
@@ -377,8 +451,12 @@
         </header>
 
         <div class="add-form">
-            <form hx-post="/api/endpoints" hx-target="#endpoint-list" class="form-row">
+            <form hx-post="/api/endpoints" hx-target="#endpoint-content" class="form-row">
                 <input type="text" name="name" placeholder="名前" required>
+                <select name="network" required>
+                    <option value="AI2">AI2</option>
+                    <option value="AI3">AI3</option>
+                </select>
                 <input type="text" name="ip" placeholder="IP アドレス" required>
                 <input type="number" name="port" placeholder="ポート" required>
                 <input type="text" name="api_key" placeholder="APIキー">
@@ -387,7 +465,15 @@
         </div>
 
         <div id="endpoint-list" class="endpoint-list">
-            <div hx-get="/api/endpoints" hx-trigger="load" hx-swap="innerHTML">
+            <div class="toolbar">
+                <button class="btn btn-ping-all"
+                        hx-post="/api/endpoints/ping-all"
+                        hx-target="#endpoint-content"
+                        hx-swap="innerHTML">
+                    全件Ping
+                </button>
+            </div>
+            <div id="endpoint-content" hx-get="/api/endpoints" hx-trigger="load" hx-swap="innerHTML">
                 <div class="loading">読み込み中...</div>
             </div>
         </div>

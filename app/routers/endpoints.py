@@ -8,33 +8,66 @@ from ..services.llm_detector import check_status, get_model_name
 
 router = APIRouter(prefix="/api/endpoints", tags=["endpoints"])
 
+NETWORK_ORDER = ["AI2", "AI3"]
+NETWORK_LABELS = {
+    "AI2": "AI2：192.168.86",
+    "AI3": "AI3：10.0.1",
+}
+
+
+def render_network_section(network: str, endpoints: List[LLMEndpoint]) -> str:
+    if not endpoints:
+        body = '<div class="network-empty">このネットワークには登録がありません</div>'
+    else:
+        body = "".join(
+            f'''
+            <div class="endpoint-item border-b p-4 flex items-center justify-between">
+                <div class="flex-1">
+                    <div class="font-semibold text-lg">{ep.name}</div>
+                    <div class="text-gray-600">{ep.ip}:{ep.port}</div>
+                    <div class="text-sm text-gray-500">モデル: {ep.model_name or "未取得"}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="status-badge {"status-online" if ep.status == "online" else "status-offline" if ep.status == "offline" else "status-unknown"}">{ep.status}</span>
+                    <button class="btn btn-ping"
+                            hx-post="/api/endpoints/{ep.id}/ping"
+                            hx-target="#endpoint-content"
+                            hx-swap="innerHTML">
+                        Ping
+                    </button>
+                    <button class="btn btn-delete"
+                            hx-delete="/api/endpoints/{ep.id}"
+                            hx-target="#endpoint-content"
+                            hx-swap="innerHTML">
+                        削除
+                    </button>
+                </div>
+            </div>
+            '''
+            for ep in endpoints
+        )
+
+    return f'''
+    <section class="network-group">
+        <div class="network-header">
+            <div class="network-title">{NETWORK_LABELS.get(network, network)}</div>
+            <div class="network-count">{len(endpoints)} 台</div>
+        </div>
+        <div class="network-body">
+            {body}
+        </div>
+    </section>
+    '''
+
+
 def render_endpoints_html(endpoints: List[LLMEndpoint]) -> str:
     if not endpoints:
         return '<div class="text-gray-500 p-4">LLMエンドポイントがありません</div>'
-    return "".join(f'''
-    <div class="endpoint-item border-b p-4 flex items-center justify-between">
-        <div class="flex-1">
-            <div class="font-semibold text-lg">{ep.name}</div>
-            <div class="text-gray-600">{ep.ip}:{ep.port}</div>
-            <div class="text-sm text-gray-500">モデル: {ep.model_name or "未取得"}</div>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="status-badge {"status-online" if ep.status == "online" else "status-offline" if ep.status == "offline" else "status-unknown"}">{ep.status}</span>
-            <button class="btn btn-ping"
-                    hx-post="/api/endpoints/{ep.id}/ping"
-                    hx-target="#endpoint-list"
-                    hx-swap="innerHTML">
-                Ping
-            </button>
-            <button class="btn btn-delete"
-                    hx-delete="/api/endpoints/{ep.id}"
-                    hx-target="#endpoint-list"
-                    hx-swap="innerHTML">
-                削除
-            </button>
-        </div>
-    </div>
-    ''' for ep in endpoints)
+    grouped = {network: [] for network in NETWORK_ORDER}
+    for ep in endpoints:
+        if ep.network in grouped:
+            grouped[ep.network].append(ep)
+    return "".join(render_network_section(network, grouped[network]) for network in NETWORK_ORDER)
 
 @router.get("")
 async def list_endpoints(request: Request):
@@ -44,8 +77,8 @@ async def list_endpoints(request: Request):
     return endpoints
 
 @router.post("")
-async def create_endpoint(name: str = Form(...), ip: str = Form(...), port: int = Form(...), api_key: str = Form(None)):
-    ep = create(name, ip, port, api_key)
+async def create_endpoint(name: str = Form(...), network: str = Form(...), ip: str = Form(...), port: int = Form(...), api_key: str = Form(None)):
+    ep = create(name, network, ip, port, api_key)
     # Auto-fetch model name on creation
     model_name = await get_model_name(ep.ip, ep.port)
     if model_name:
@@ -64,7 +97,7 @@ async def get_endpoint(endpoint_id: int):
 
 @router.put("/{endpoint_id}")
 async def update_endpoint(endpoint_id: int, data: LLMEndpoint):
-    updated = update(endpoint_id, name=data.name, ip=data.ip, port=data.port, api_key=data.api_key)
+    updated = update(endpoint_id, name=data.name, network=data.network, ip=data.ip, port=data.port, api_key=data.api_key)
     if not updated:
         raise HTTPException(status_code=404, detail="Endpoint not found")
     # Auto-fetch model name on update
@@ -93,6 +126,16 @@ async def ping_endpoint(endpoint_id: int):
     update(endpoint_id, status=status)
     endpoints = list_all()
     return HTMLResponse(render_endpoints_html(endpoints))
+
+
+@router.post("/ping-all", response_class=HTMLResponse)
+async def ping_all_endpoints():
+    endpoints = list_all()
+    for ep in endpoints:
+        is_alive = await check_status(ep.ip, ep.port)
+        status = "online" if is_alive else "offline"
+        update(ep.id, status=status)
+    return HTMLResponse(render_endpoints_html(list_all()))
 
 @router.get("/{endpoint_id}/model", response_class=HTMLResponse)
 async def fetch_model(endpoint_id: int):

@@ -33,12 +33,13 @@ def get_by_id(endpoint_id: int) -> Optional[LLMEndpoint]:
             return LLMEndpoint(**item)
     return None
 
-def create(name: str, ip: str, port: int, api_key: Optional[str] = None) -> LLMEndpoint:
+def create(name: str, network: str, ip: str, port: int, api_key: Optional[str] = None) -> LLMEndpoint:
     data = _load_raw()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     new_ep = LLMEndpoint(
         id=get_next_id(),
         name=name,
+        network=network,
         ip=ip,
         port=port,
         api_key=api_key,
@@ -51,7 +52,7 @@ def create(name: str, ip: str, port: int, api_key: Optional[str] = None) -> LLME
     _save_raw(data)
     return new_ep
 
-def update(endpoint_id: int, name: Optional[str] = None, ip: Optional[str] = None,
+def update(endpoint_id: int, name: Optional[str] = None, network: Optional[str] = None, ip: Optional[str] = None,
            port: Optional[int] = None, api_key: Optional[str] = None,
            model_name: Optional[str] = None, status: Optional[str] = None) -> Optional[LLMEndpoint]:
     data = _load_raw()
@@ -59,6 +60,8 @@ def update(endpoint_id: int, name: Optional[str] = None, ip: Optional[str] = Non
         if item["id"] == endpoint_id:
             if name is not None:
                 item["name"] = name
+            if network is not None:
+                item["network"] = network
             if ip is not None:
                 item["ip"] = ip
             if port is not None:
