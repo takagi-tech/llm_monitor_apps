@@ -94,7 +94,7 @@
         }
 
         .add-form::before {
-            content: "新規/entrance";
+            content: "モデルの登録";
             position: absolute;
             top: -10px;
             left: 20px;
@@ -452,7 +452,7 @@
 
         <div class="add-form">
             <form hx-post="/api/endpoints" hx-target="#endpoint-content" class="form-row">
-                <input type="text" name="name" placeholder="名前" required>
+                <input type="text" name="name" placeholder="モデル名" required>
                 <select name="network" required>
                     <option value="AI2">AI2</option>
                     <option value="AI3">AI3</option>
