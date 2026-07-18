@@ -2,9 +2,11 @@ from fastapi import APIRouter, HTTPException, Form, Request
 from fastapi.responses import HTMLResponse
 from typing import List, Optional
 
+import asyncio
+
 from ..database import list_all, get_by_id, create, update, delete
 from ..models import LLMEndpoint
-from ..services.llm_detector import check_status, get_model_name
+from ..services.llm_detector import check_endpoint, get_model_name
 
 router = APIRouter(prefix="/api/endpoints", tags=["endpoints"])
 
@@ -25,7 +27,7 @@ def render_network_section(network: str, endpoints: List[LLMEndpoint]) -> str:
                 <div class="flex-1">
                     <div class="font-semibold text-lg">{ep.name}</div>
                     <div class="text-gray-600">{ep.ip}:{ep.port}</div>
-                    <div class="text-sm text-gray-500">モデル: {ep.model_name or "未取得"}</div>
+                    <div class="text-sm text-gray-500">モデル: {ep.model_name if ep.status == "online" and ep.model_name else "—"}</div>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="status-badge {"status-online" if ep.status == "online" else "status-offline" if ep.status == "offline" else "status-unknown"}">{ep.status}</span>
@@ -33,7 +35,7 @@ def render_network_section(network: str, endpoints: List[LLMEndpoint]) -> str:
                             hx-post="/api/endpoints/{ep.id}/ping"
                             hx-target="#endpoint-content"
                             hx-swap="innerHTML">
-                        Ping
+                        更新
                     </button>
                     <button class="btn btn-delete"
                             hx-delete="/api/endpoints/{ep.id}"
@@ -75,6 +77,23 @@ async def list_endpoints(request: Request):
     if request.headers.get("hx-request") == "true":
         return HTMLResponse(render_endpoints_html(endpoints))
     return endpoints
+
+
+async def _refresh_all() -> List[LLMEndpoint]:
+    """登録済み全マシンを並行してチェックし、状態とモデル名を更新する"""
+    endpoints = list_all()
+    results = await asyncio.gather(
+        *(check_endpoint(ep.ip, ep.port) for ep in endpoints)
+    )
+    for ep, result in zip(endpoints, results):
+        update(ep.id, status=result["status"], model_name=result["model_name"])
+    return list_all()
+
+
+@router.get("/refresh", response_class=HTMLResponse)
+async def refresh_all():
+    """自動ポーリング／手動更新の両方から呼ばれる。全台の稼働状況を最新化する。"""
+    return HTMLResponse(render_endpoints_html(await _refresh_all()))
 
 @router.post("")
 async def create_endpoint(name: str = Form(...), network: str = Form(...), ip: str = Form(...), port: int = Form(...), api_key: str = Form(None)):
@@ -121,21 +140,15 @@ async def ping_endpoint(endpoint_id: int):
     if not ep:
         raise HTTPException(status_code=404, detail="Endpoint not found")
 
-    is_alive = await check_status(ep.ip, ep.port)
-    status = "online" if is_alive else "offline"
-    update(endpoint_id, status=status)
+    result = await check_endpoint(ep.ip, ep.port)
+    update(endpoint_id, status=result["status"], model_name=result["model_name"])
     endpoints = list_all()
     return HTMLResponse(render_endpoints_html(endpoints))
 
 
 @router.post("/ping-all", response_class=HTMLResponse)
 async def ping_all_endpoints():
-    endpoints = list_all()
-    for ep in endpoints:
-        is_alive = await check_status(ep.ip, ep.port)
-        status = "online" if is_alive else "offline"
-        update(ep.id, status=status)
-    return HTMLResponse(render_endpoints_html(list_all()))
+    return HTMLResponse(render_endpoints_html(await _refresh_all()))
 
 @router.get("/{endpoint_id}/model", response_class=HTMLResponse)
 async def fetch_model(endpoint_id: int):

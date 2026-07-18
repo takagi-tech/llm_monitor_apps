@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Monitor - 侍吟録</title>
+    <title>みはる - LLM稼働モニター</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -82,6 +82,14 @@
             letter-spacing: 0.15em;
         }
 
+        .header p.romaji {
+            font-size: 0.7rem;
+            color: var(--vermillion);
+            margin-top: 0.5rem;
+            letter-spacing: 0.35em;
+            opacity: 0.8;
+        }
+
         /* Add Form */
         .add-form {
             background: var(--cream);
@@ -94,7 +102,7 @@
         }
 
         .add-form::before {
-            content: "モデルの登録";
+            content: "マシンの登録";
             position: absolute;
             top: -10px;
             left: 20px;
@@ -188,7 +196,15 @@
         .toolbar {
             display: flex;
             justify-content: flex-end;
+            align-items: center;
+            gap: 0.75rem;
             margin-bottom: 1rem;
+        }
+
+        .auto-note {
+            font-size: 0.8rem;
+            color: var(--ink-light);
+            letter-spacing: 0.08em;
         }
 
         .network-group + .network-group {
@@ -446,34 +462,38 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>侍<span>吟</span>録</h1>
-            <p>～LLM監視モニター～</p>
+            <h1>み<span>は</span>る</h1>
+            <p class="romaji">M　I　H　A　R　U</p>
+            <p>～研究室LLM稼働モニター～</p>
         </header>
 
         <div class="add-form">
             <form hx-post="/api/endpoints" hx-target="#endpoint-content" class="form-row">
-                <input type="text" name="name" placeholder="モデル名" required>
+                <input type="text" name="name" placeholder="マシン名" required>
                 <select name="network" required>
                     <option value="AI2">AI2</option>
                     <option value="AI3">AI3</option>
                 </select>
                 <input type="text" name="ip" placeholder="IP アドレス" required>
                 <input type="number" name="port" placeholder="ポート" required>
-                <input type="text" name="api_key" placeholder="APIキー">
                 <button type="submit">登録</button>
             </form>
         </div>
 
         <div id="endpoint-list" class="endpoint-list">
             <div class="toolbar">
+                <span class="auto-note">20秒ごとに自動更新中</span>
                 <button class="btn btn-ping-all"
-                        hx-post="/api/endpoints/ping-all"
+                        hx-get="/api/endpoints/refresh"
                         hx-target="#endpoint-content"
                         hx-swap="innerHTML">
-                    全件Ping
+                    今すぐ更新
                 </button>
             </div>
-            <div id="endpoint-content" hx-get="/api/endpoints" hx-trigger="load" hx-swap="innerHTML">
+            <div id="endpoint-content"
+                 hx-get="/api/endpoints/refresh"
+                 hx-trigger="load, every 20s"
+                 hx-swap="innerHTML">
                 <div class="loading">読み込み中...</div>
             </div>
         </div>
