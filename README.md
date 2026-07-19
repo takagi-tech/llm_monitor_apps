@@ -1,39 +1,37 @@
-# LLM Monitor Apps
+# みはる（LLM Monitor Apps）
 
-FastAPI と HTMX で作られた、ローカル LLM サーバーの簡易監視 Web アプリです。
-登録したエンドポイントに対して疎通確認を行い、モデル名を取得して一覧表示できます。
+**みはる** は、FastAPI と HTMX で作られた、ローカル LLM サーバーの簡易監視 Web アプリです。
+登録したマシン（IP:ポート）に問い合わせ、**今オンラインか／どのモデルが立っているか**を一覧表示します。
+
+> 研究室での運用（ネットワーク構成・デプロイ手順）は [docs/運用ガイド.md](docs/運用ガイド.md) を参照してください。
 
 ## できること
 
-- LLM エンドポイントを Web UI から登録する
-- `/health` へのリクエストでオンライン状態を確認する
-- `/v1/models` または `/props` からモデル名を取得する
-- 登録済みエンドポイントを一覧表示・削除する
+- 監視したいマシン（IP:ポート）を Web UI から登録する
+- 各マシンの `/v1/models` に問い合わせ、**オンライン判定とモデル名取得を同時に行う**
+- **20秒ごとに自動更新**（画面を開いておけば常に最新）＋手動更新ボタン
+- ネットワーク（AI2 / AI3）ごとにグループ分けして表示
 - データを `endpoints.json` に保存する
 
-## 想定している LLM サーバー
+## 稼働判定の仕組み
 
-このアプリは、次のような HTTP エンドポイントを持つサーバーを想定しています。
+モデル名の取得を、そのままオンライン判定に使います。
 
-- `GET /health`
-- `GET /v1/models`
-- `GET /props`
+1. `http://<ip>:<port>/v1/models` に問い合わせる（取れなければ `http://<ip>:<port>/props`）
+2. **モデル名が取れた** → `online` ＋ そのモデル名を表示
+3. **応答がない/エラー** → `offline`（モデル欄は「—」）
 
-実装上は、モデル名の取得時に以下の順で問い合わせます。
+「モデルが立っている ⟹ サーバーは起動している」ため、`/v1/models` 一本で
+「生きているか」と「何が立っているか」を同時に判定できます（`/health` は使いません）。
 
-1. `http://<ip>:<port>/v1/models`
-2. `http://<ip>:<port>/props`
+- 全マシンのチェックは**並行実行**（オフライン機で待たされない。タイムアウト3秒）
+- vLLM を認証あり（`--api-key`）で立てる運用は現状未対応（将来課題）
 
 ## 使用技術
 
-- Python
-- UV
-- FastAPI
-- HTMX
-- Uvicorn
+- Python / UV / FastAPI / HTMX / Uvicorn
 
-補足:
-画面は Tailwind ではなく、現状はテンプレート内のインライン CSS で構成されています。
+補足：画面はテンプレート内のインライン CSS で構成されています（Tailwind は未導入）。
 
 ## ディレクトリ構成
 
@@ -49,6 +47,8 @@ FastAPI と HTMX で作られた、ローカル LLM サーバーの簡易監視 
 │   │   └── llm_detector.py
 │   └── templates
 │       └── index.html
+├── docs
+│   └── 運用ガイド.md
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
@@ -64,140 +64,73 @@ FastAPI と HTMX で作られた、ローカル LLM サーバーの簡易監視 
 - `uv` がインストールされていること
 - Python 3.10 以上が使えること
 
-### セットアップ
+### セットアップ・起動
 
 ```bash
 uv sync
-```
-
-環境によって `uv` の標準キャッシュディレクトリに書き込めない場合があります。
-その場合は、書き込み可能なディレクトリを `UV_CACHE_DIR` に指定してください。
-
-```bash
-UV_CACHE_DIR=/tmp/uv-cache uv sync
-```
-
-### 起動
-
-```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-`uv` のキャッシュ権限でエラーになる場合はこちらを使ってください。
+`uv` のキャッシュ権限でエラーになる場合は、書き込み可能なディレクトリを指定してください。
 
 ```bash
+UV_CACHE_DIR=/tmp/uv-cache uv sync
 UV_CACHE_DIR=/tmp/uv-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-ブラウザで以下を開きます。
-
-- `http://127.0.0.1:8000/`
-- `http://localhost:8000/`
+ブラウザで `http://127.0.0.1:8000/` を開きます。
 
 ## Docker で起動する
 
-### 前提条件
-
-- Docker がインストールされていること
-- Docker Compose が使えること
-
-### 起動
-
 ```bash
-docker compose up --build
+docker compose up --build        # フォアグラウンド
+docker compose up --build -d     # バックグラウンド
+docker compose down              # 停止
 ```
 
-バックグラウンドで起動する場合はこちらです。
+`docker-compose.yml` はホストの `endpoints.json` をコンテナにバインドマウントしているため、
+コンテナを作り直しても登録内容は保持されます。`restart: unless-stopped` により再起動後も自動で立ち上がります。
 
-```bash
-docker compose up --build -d
-```
-
-ブラウザで以下を開きます。
-
-- `http://127.0.0.1:8000/`
-- `http://localhost:8000/`
-
-### 停止
-
-```bash
-docker compose down
-```
-
-### データ永続化
-
-`docker-compose.yml` では、ホスト側の `endpoints.json` をコンテナ内の `/app/endpoints.json` にバインドマウントしています。
-そのため、コンテナを作り直しても登録済みエンドポイントは保持されます。
+> 閉域ネットワーク（インターネット非接続）へのデプロイは `git clone` や `--build` が使えません。
+> イメージを別環境でビルドして持ち込む手順は [docs/運用ガイド.md](docs/運用ガイド.md) を参照してください。
 
 ## 使い方
 
 1. トップページを開く
-2. `名前` `IPアドレス` `ポート` を入力して追加する
-3. 必要に応じて以下の操作を行う
-
-- `Ping`: `/health` にアクセスして状態を更新
-- `モデル取得`: `/v1/models` または `/props` からモデル名を取得
-- `削除`: 登録済みエンドポイントを削除
-
-エンドポイント登録直後にも、モデル名の自動取得を試みます。
+2. `マシン名` `ネットワーク(AI2/AI3)` `IPアドレス` `ポート` を入力して登録する
+   - 登録するのは「マシンの住所」です。モデル名は登録不要（自動で検出されます）
+3. 一覧は AI2 / AI3 ごとにグループ表示され、各マシンの状態とモデル名が出ます
+4. 更新操作
+   - **自動**：20秒ごとに全台の状態を自動で取り直します
+   - **今すぐ更新**：全台をすぐに取り直す
+   - 各行の **更新**：そのマシンだけ取り直す
+   - **削除**：登録を削除する
 
 ## データ保存
 
-登録したエンドポイントは、リポジトリ直下の [endpoints.json](/mnt/c/users/takagi/documents/mac用ディレクトリ/study/llm_monitor_apps/endpoints.json) に保存されます。
-
-- データベースは使っていません
-- 永続化は JSON ファイルベースです
-- 削除や更新はこのファイルに即時反映されます
+- 登録データはリポジトリ直下の `endpoints.json`（JSON ファイル）に保存されます
+- データベースは使っていません。削除・更新は即時反映されます
 
 ## API エンドポイント
 
-主な API は以下です。
-
 - `GET /` : 画面表示
-- `GET /api/endpoints` : エンドポイント一覧取得
-- `POST /api/endpoints` : エンドポイント追加
-- `GET /api/endpoints/{id}` : エンドポイント詳細取得
-- `PUT /api/endpoints/{id}` : エンドポイント更新
-- `DELETE /api/endpoints/{id}` : エンドポイント削除
-- `POST /api/endpoints/{id}/ping` : ヘルスチェック実行
-- `GET /api/endpoints/{id}/model` : モデル名取得
+- `GET /api/endpoints` : 一覧取得（JSON。HTMXリクエスト時はHTML断片）
+- `GET /api/endpoints/refresh` : 全台を再チェックしてHTML描画（自動更新／今すぐ更新が使用）
+- `POST /api/endpoints` : マシン追加
+- `GET /api/endpoints/{id}` : 詳細取得
+- `PUT /api/endpoints/{id}` : 更新
+- `DELETE /api/endpoints/{id}` : 削除
+- `POST /api/endpoints/{id}/ping` : 1台を再チェック（状態＋モデル名を更新）
+- `POST /api/endpoints/ping-all` : 全台を再チェック
 
 ## 実装メモ
 
-- `api_key` フィールドはありますが、現状の疎通確認やモデル取得には使っていません
-- `/health` を持たないサーバーは `Ping` で `offline` になります
+- `api_key` はデータ項目としては残していますが、現状の稼働確認には使っていません（UIの入力欄は廃止）
 - `HEAD /` には対応していないため、`curl -I` では `405 Method Not Allowed` が返ります
-
-## トラブルシュート
-
-### ページを開けない
-
-次を確認してください。
-
-- サーバーが起動中か
-- `8000` 番ポートが他プロセスと競合していないか
-- WSL やコンテナ内で起動している場合、ブラウザから到達できる環境で起動しているか
-
-### `uv` がキャッシュ書き込みで失敗する
-
-一時ディレクトリを明示してください。
-
-```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Docker ビルドが失敗する
-
-次を確認してください。
-
-- Docker デーモンが起動しているか
-- `docker compose` が使えるか
-- 社内ネットワークやプロキシの制限で Python パッケージ取得に失敗していないか
 
 ## 今後の改善候補
 
-- Tailwind の導入
-- API キー付きエンドポイントへの対応
-- 定期ポーリングによる自動監視
-- テスト追加
-- Docker イメージの軽量化
+- 認証あり（`--api-key`）vLLM への対応（APIキーを Bearer で付与）
+- ネットワークの自動スキャン（登録不要で稼働機を自動発見）
+- GPU種別・VRAM の表示
+- Tailwind の導入 / テスト追加 / Docker イメージの軽量化
