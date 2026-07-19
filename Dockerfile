@@ -15,7 +15,8 @@ RUN uv sync --frozen --no-dev
 
 COPY app ./app
 COPY main.py ./main.py
-COPY endpoints.json ./endpoints.json
+# endpoints.json は実行時データ。compose でホストからバインドマウントする
+# （未存在なら database.py が空一覧として扱う）
 
 EXPOSE 8000
 

@@ -82,7 +82,11 @@ UV_CACHE_DIR=/tmp/uv-cache uv run uvicorn app.main:app --host 0.0.0.0 --port 800
 
 ## Docker で起動する
 
+`endpoints.json` は実行時データのため Git 追跡外です。compose がホストの
+`endpoints.json` をマウントするので、**初回のみ空ファイルを用意**してください。
+
 ```bash
+cp endpoints.json.example endpoints.json   # 初回のみ
 docker compose up --build        # フォアグラウンド
 docker compose up --build -d     # バックグラウンド
 docker compose down              # 停止
